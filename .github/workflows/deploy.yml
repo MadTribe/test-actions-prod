@@ -93,9 +93,9 @@ jobs:
         run: |
           # Test API access
           curl -H "Authorization: token ${PROD_REPO_TOKEN}" \
-            https://api.github.com/repos/madtribe/test-actions-prod | jq '.permissions'
+            https://api.github.com/repos/MadTribe/test-actions-prod | jq '.permissions'
           curl -H "Authorization: token ${PROD_REPO_TOKEN}" \
-            https://api.github.com/repos/madtribe/test-actions-prod 
+            https://api.github.com/repos/MadTribe/test-actions-prod 
       # --- STEP 3: PUSH TO PRODUCTION REPO ---
       - name: Push to Production Repo
         env:
@@ -118,7 +118,7 @@ jobs:
           unset GIT_ASKPASS
 
           # CORRECTED: Use x-access-token as the username
-          TARGET_REPO="https://MadTribe:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
+          TARGET_REPO="https://MadTribe:${PROD_REPO_TOKEN}@github.com/MadTribe/test-actions-prod.git"
         
           git remote remove prod 2>/dev/null || true
           git remote add prod "$TARGET_REPO"
