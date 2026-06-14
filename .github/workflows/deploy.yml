@@ -118,7 +118,7 @@ jobs:
           unset GIT_ASKPASS
 
           # CORRECTED: Use x-access-token as the username
-          TARGET_REPO="https://x-access-token:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
+          TARGET_REPO="https://MadTribe:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
         
           git remote remove prod 2>/dev/null || true
           git remote add prod "$TARGET_REPO"
