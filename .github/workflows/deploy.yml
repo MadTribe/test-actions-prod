@@ -112,7 +112,7 @@ jobs:
           git config --global --unset-all credential.helper 2>/dev/null || true
           unset GIT_ASKPASS
 
-          TARGET_REPO="https://x-access-token:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
+          TARGET_REPO="https://user:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
          
           git remote remove prod 2>/dev/null || true
           git remote add prod "$TARGET_REPO"
