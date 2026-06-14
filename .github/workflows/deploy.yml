@@ -94,6 +94,8 @@ jobs:
           # Test API access
           curl -H "Authorization: token ${PROD_REPO_TOKEN}" \
             https://api.github.com/repos/madtribe/test-actions-prod | jq '.permissions'
+          curl -H "Authorization: token ${PROD_REPO_TOKEN}" \
+            https://api.github.com/repos/madtribe/test-actions-prod 
       # --- STEP 3: PUSH TO PRODUCTION REPO ---
       - name: Push to Production Repo
         env:
