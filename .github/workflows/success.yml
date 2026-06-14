@@ -1,0 +1,17 @@
+name: Always Success
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # allows manual triggering
+
+jobs:
+  success-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Return success
+        run: |
+          echo "This action always succeeds!"
+          exit 0  # explicitly exit with 0 (success)
