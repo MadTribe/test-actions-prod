@@ -101,9 +101,13 @@ jobs:
           git config --global user.name "MadTribe"
           git config --global user.email "MadTribe@users.noreply.github.com"
           
-          # Remove the extra header left by actions/checkout
-          git config --global --unset-all http.https://github.com/.extraheader
-
+          
+          # Nuke ALL GitHub http config - the heavy-handed but reliable approach
+          git config --global --remove-section http.https://github.com 2>/dev/null || true     
+          
+          # Also clear any credential helper that might interfere
+          git config --global --unset-all credential.helper 2>/dev/null || true
+          unset GIT_ASKPASS
 
           TARGET_REPO="https://x-access-token:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
          
