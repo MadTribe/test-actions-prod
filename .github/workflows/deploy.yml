@@ -1,0 +1,101 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+      destination_branch:
+        description: 'Target branch in the production repo'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: write
+  checks: read
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history and tags so we can find tags and push them
+          fetch-depth: 0 
+          ref: ${{ github.event.inputs.source_branch }}
+
+      # --- STEP 1: SAFETY CHECKS ---
+      - name: Verify tests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Checking check runs for commit: $COMMIT_SHA"
+
+          CURRENT_CHECK_SUITE_ID=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.check_suite_id')
+          echo "Current workflow check suite ID: $CURRENT_CHECK_SUITE_ID"
+
+          gh api "repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs?per_page=100" --jq '.check_runs' > /tmp/checks.json
+
+          CHECK_COUNT=$(jq '. | length' /tmp/checks.json)
+          if [ "$CHECK_COUNT" -eq 0 ]; then
+            echo "❌ ERROR: No check runs found for commit $COMMIT_SHA. Release aborted."
+            exit 1
+          fi
+
+          echo "Found $CHECK_COUNT check runs:"
+          jq -r '.[] | "  - \(.name): status=\(.status), conclusion=\(.conclusion // "none")"' /tmp/checks.json
+
+          INCOMPLETE=$(jq --arg cid "$CURRENT_CHECK_SUITE_ID" '[.[] | select(.check_suite.id != ($cid | tonumber) and .status != "completed")] | length' /tmp/checks.json)
+          if [ "$INCOMPLETE" -gt 0 ]; then
+            echo "❌ ERROR: Some checks are still running or queued. Release aborted."
+            jq -r --arg cid "$CURRENT_CHECK_SUITE_ID" '.[] | select(.check_suite.id != ($cid | tonumber) and .status != "completed") | "  - \(.name): \(.status)"' /tmp/checks.json
+            exit 1
+          fi
+
+          FAILED=$(jq --arg cid "$CURRENT_CHECK_SUITE_ID" '[.[] | select(.check_suite.id != ($cid | tonumber) and (.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out"))] | length' /tmp/checks.json)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "❌ ERROR: Some checks failed. Release aborted."
+            jq -r --arg cid "$CURRENT_CHECK_SUITE_ID" '.[] | select(.check_suite.id != ($cid | tonumber) and (.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")) | "  - \(.name): \(.conclusion)"' /tmp/checks.json
+            exit 1
+          fi
+
+          echo "✅ All checks passed!"
+
+      # --- STEP 2: TAGGING ---
+      - name: Create and Push Release Tag
+        id: create_tag
+        run: |
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Generate a unique tag based on date and run number (e.g., v2026.06.09-run42)
+          TAG_NAME="v$(date +'%Y.%m.%d')-run${{ github.run_number }}"
+          echo "RELEASE_TAG=$TAG_NAME" >> $GITHUB_ENV
+          
+          echo "Creating tag: $TAG_NAME"
+          git tag -a "$TAG_NAME" -m "Production Release via GitHub Actions"
+          git push origin "$TAG_NAME"
+
+      # --- STEP 3: PUSH TO PRODUCTION REPO ---
+      - name: Push to Production Repo
+        env:
+          PROD_REPO_TOKEN: ${{ secrets.PROD_REPO_ACCESS_TOKEN }}
+          DESTINATION_BRANCH: ${{ github.event.inputs.destination_branch }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          TARGET_REPO="https://x-access-token:${PROD_REPO_TOKEN}@github.com/madtribe/test-actions-prod.git"
+          git remote add prod $TARGET_REPO
+          
+          echo "🚀 Deploying new release using tag ${{ env.RELEASE_TAG }}..."
+          git push prod HEAD:${DESTINATION_BRANCH} --force
