@@ -99,30 +99,13 @@ jobs:
             https://api.github.com/repos/MadTribe/test-actions-prod 
       # --- STEP 3: PUSH TO PRODUCTION REPO ---
       - name: Push to Production Repo
-        env:
-          PROD_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DESTINATION_BRANCH: ${{ github.event.inputs.destination_branch }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Git Push
         run: |
-          set -x
-          
-          echo "Token length: ${#PROD_REPO_TOKEN}"
-          echo "Token first chars: ${PROD_REPO_TOKEN:0:4}****"
-          
           git config --global user.name "MadTribe"
           git config --global user.email "MadTribe@users.noreply.github.com"
-          
-          # Nuke ALL GitHub http config - the heavy-handed but reliable approach
-          git config --global --remove-section http.https://github.com 2>/dev/null || true     
-          
-          # Also clear any credential helper that might interfere
-          git config --global --unset-all credential.helper 2>/dev/null || true
-          unset GIT_ASKPASS
-
-          # CORRECTED: Use x-access-token as the username
-          TARGET_REPO="https://x-access-token:${PROD_REPO_TOKEN}@github.com/MadTribe/test-actions-prod.git"
-        
-          git remote remove prod 2>/dev/null || true
-          git remote add prod "$TARGET_REPO"
-          
-          echo "🚀 Deploying new release using tag ${{ env.RELEASE_TAG }}..."
-          git push prod HEAD:${DESTINATION_BRANCH} --force
+          git remote add prod git@github.com:madtribe/test-actions-prod.git
+          git push prod HEAD:main --force
