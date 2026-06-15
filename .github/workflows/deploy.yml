@@ -23,16 +23,12 @@ jobs:
       checks: read
       actions: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Environment variables for git user and prod repo
-  GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-  GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-  PROD_REPO_SSH_URL: ${{ secrets.PROD_REPO_SSH_URL }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+      GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+      PROD_REPO_SSH_URL: ${{ secrets.PROD_REPO_SSH_URL }}
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,7 +36,7 @@ jobs:
           fetch-depth: 0 
           ref: ${{ github.event.inputs.source_branch }}
 
-      # --- STEP 1: SAFETY CHECKS (unchanged) ---
+      # --- STEP 1: SAFETY CHECKS ---
       - name: Verify tests
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,7 +77,7 @@ jobs:
 
           echo "✅ All checks passed!"
 
-      # --- STEP 2: TAGGING (also pushes tag to origin) ---
+      # --- STEP 2: TAGGING ---
       - name: Create and Push Release Tag
         id: create_tag
         run: |
